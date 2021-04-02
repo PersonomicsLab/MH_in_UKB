@@ -1,0 +1,11 @@
+#PBS -N CCAbrainInput -l nodes=1:ppn=1,mem=1000gb,walltime=120:00:00
+#PBS -o /scratch/janine/MentalHealthInUKB/CCA/log_brainInputs.o
+#PBS -e /scratch/janine/MentalHealthInUKB/CCA/log_brainInputs.e
+
+module load matlab
+module load fsl
+cd /scratch/janine/MentalHealthInUKB/CCA/
+matlab -nojvm -nosplash -nodisplay \< /scratch/janine/MentalHealthInUKB/CCA/PrepareInputs_brain.m
+
+
+
