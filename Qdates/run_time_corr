@@ -1,9 +1,7 @@
 #PBS -l nodes=1:ppn=1,mem=20gb
 #PBS -l walltime=23:00:00
 #PBS -N time_vs_corr
-#PBS -o /scratch/janine/MentalHealthInUKB/Qcomparison/time_vs_corr.o
-#PBS -e /scratch/janine/MentalHealthInUKB/Qcomparison/time_vs_corr.e
 
 module load matlab
-cd /scratch/janine/MentalHealthInUKB/Qcomparison
-matlab -nojvm -nosplash -nodisplay \< /scratch/janine/MentalHealthInUKB/Qcomparison/run_time_corr.m
+cd /scratch/tyo8teasley/Qdates
+matlab -nojvm -nosplash -nodisplay \< /scratch/tyo8teasley/Qdates/run_time_corr.m

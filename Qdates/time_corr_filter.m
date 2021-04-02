@@ -40,7 +40,8 @@ for i=1:length(increments)
     distributions{i} = null_dist;
     
     window_corr(i) = cmp_tst(data1_recent,data2_recent);
-    tmp_phat = invprctile(null_dist,window_corr(i));
+    tmp_prctl = invprctile(null_dist,window_corr(i));
+    tmp_phat = (100 - tmp_prctl)/100;
     
     if tmp_phat > 0
         window_phat(i) = tmp_phat;

@@ -1,6 +1,6 @@
-preamble = fullfile(filesep,'scratch','tyo8teasley','Qdates');
+% preamble = fullfile(filesep,'scratch','tyo8teasley','Qdates');
 % preamble = fullfile(filesep,'scratch','janine','MentalHealthInUKB','Qdates');
-% preamble = fullfile('');
+preamble = fullfile('');
 addpath(preamble)
 loadname = fullfile(preamble,'Dates_and_scores.mat');
 vars = load(loadname,'Dsum','elps_days','summary_labels');
@@ -16,10 +16,7 @@ Dsum = vars.Dsum;
 num_days_elapsed = abs(vars.elps_days);
 clear vars
 
-n_samp = 25000;
 cmp_tst= @(x,y) corr(x,y,'type','spearman');
-method = 'perm_test';
-par    = false;
 tstep  = unique(num_days_elapsed);
 
 savedir = ['metrics_thru_time_' datestr(datetime,'mmmdd')];
@@ -28,24 +25,19 @@ if ~exist(saveloc,'dir')
     mkdir(saveloc)
 end
 
-cd(saveloc)
-
 savename = fullfile(saveloc,'run_parameters.mat');
-save(savename,'Dsum','num_days_elapsed','n_samp',...
-    'cmp_tst','method','par','tstep')
+save(savename,'Dsum','num_days_elapsed','cmp_tst','tstep')
 
 for i=1:size(Dsum,2)
     for j=i:size(Dsum,2)
         if j~=i
-            [corr_vs_days,pvals_vs_days,distributions] = ...
-                time_corr_filter(Dsum(:,i),Dsum(:,j),...
-                num_days_elapsed,'n_samp',n_samp,...
-                'comparison_test',cmp_tst,'method',method,...
-                'parallelize',par,...
-                'increments',tstep);
+            [corr_vals,samp_size,tstep_new] = ...
+                time_corr_filter_v2(Dsum(:,i),Dsum(:,j),...
+                num_days_elapsed,'increments',tstep,...
+                'comparison_test',cmp_tst);
             savename_ij = [metric_names{i} '_vs_' metric_names{j} '.mat'];
             saveloc_ij = fullfile(saveloc,savename_ij);
-            save(saveloc_ij,'corr_vs_days','pvals_vs_days','distributions')
+            save(saveloc_ij,'corr_vals','samp_size','tstep_new')
         end
     end
 end
