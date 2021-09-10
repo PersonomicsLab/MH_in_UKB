@@ -2,17 +2,17 @@ clear all; close all; clc
 
 addpath('/scratch/janine/MentalHealthInUKB/MatlabScripts/FSLNets')
 addpath('/scratch/janine/MentalHealthInUKB/MatlabScripts/')
-INPUT = 'Subjects_CCAnew.csv';
+INPUT = 'Subjects_CCA.csv';
 
 % Load data
-S = load(sprintf('%s/%s','/Users/janinebijsterbosch/Box/00_CHPC2_Backups/MentalHealthInUKB_CHPC/SubjectSplits/',INPUT));
-MH = readtable('/Users/janinebijsterbosch/Box/00_CHPC2_Backups/MentalHealthInUKB_CHPC/Data/MH_scan1_40k.tsv','FileType','text');
+S = load(sprintf('%s/%s','/scratch/janine/MentalHealthInUKB/SubjectSplits/',INPUT));
+MH = readtable('/scratch/janine/MentalHealthInUKB/Data/MH_scan1.tsv','FileType','text');
 [~,s,~] = intersect(table2array(MH(:,1)),S); MH = MH(s,:);
 H = get_UKB_headers(MH);
 MH = standardizeMissing(MH,-3); MH = standardizeMissing(MH,-1); MH = standardizeMissing(MH,-818);
 
 % Prepare confounds
-load(sprintf('%s/Confounds_Subjects_%s.mat','/Users/janinebijsterbosch/Box/00_CHPC2_Backups/MentalHealthInUKB_CHPC/Data/',INPUT(10:end-4)));
+load(sprintf('%s/Confounds_Subjects_%s.mat','/scratch/janine/MentalHealthInUKB/Data/',INPUT(10:end-4)));
 conf = nets_demean(conf);
 Pconf = pinv(conf);
 
@@ -27,7 +27,7 @@ Dall = nets_demean(Dall,2);
 Dall = nets_demean((Dall'-conf*(Pconf*Dall'))',2);
 Dall = Dall';
 
-% Probable depression status
+% Recurrrent MDD
 n1 = strfind(H,'4598-2.0'); n1 = find(~cellfun(@isempty,n1));
 EverDep = table2array(MH(:,n1)); clear n1
 n1 = strfind(H,'4631-2.0'); n1 = find(~cellfun(@isempty,n1));
@@ -40,18 +40,18 @@ n1 = strfind(H,'2090-2.0'); n1 = find(~cellfun(@isempty,n1));
 SeenGP = table2array(MH(:,n1)); clear n1
 n1 = strfind(H,'2100-2.0'); n1 = find(~cellfun(@isempty,n1));
 SeenPsych = table2array(MH(:,n1)); clear n1
-MDDstatus = zeros(size(S));
+RecurrentMDD = zeros(size(S));
 for n = 1:length(S)
     if EverDep(n) == 1 || EverUnenth(n) == 1
         if DurDep(n)>1 || DurUnenth(n)>1
             if SeenGP(n) == 1 || SeenPsych(n) == 1
-                MDDstatus(n) = 1;
+                RecurrentMDD(n) = 1;
             end
         end
     end
 end
 
-% Recent depressive symptoms (RDS)
+% Recent MDD symptoms
 n1 = strfind(H,'2050-2.0'); n1 = find(~cellfun(@isempty,n1));
 Mood = table2array(MH(:,n1)); clear n1
 n1 = strfind(H,'2060-2.0'); n1 = find(~cellfun(@isempty,n1));
@@ -60,7 +60,7 @@ n1 = strfind(H,'2070-2.0'); n1 = find(~cellfun(@isempty,n1));
 Tense = table2array(MH(:,n1)); clear n1
 n1 = strfind(H,'2080-2.0'); n1 = find(~cellfun(@isempty,n1));
 Tired = table2array(MH(:,n1)); clear n1
-RDS = sum([Mood Unenth Tense Tired],2);
+RecentMDD = sum([Mood Unenth Tense Tired],2);
 D4 = [Mood Unenth Tense Tired];
 
 % PHQ
@@ -130,7 +130,7 @@ Afraid = table2array(MH(:,n1)); clear n1
 GAD = sum([Nervous Control Worry Relax Restless Annoyed Afraid],2)-7;
 
 % Combine all summary measures
-Dsum = [MDDstatus RDS PHQ N GAD]';
+Dsum = [RecurrentMDD RecentMDD PHQ N GAD]';
 Dsum = nets_demean(Dsum,2);
 Dsum = nets_demean((Dsum'-conf*(Pconf*Dsum'))',2);
 Dsum = Dsum';

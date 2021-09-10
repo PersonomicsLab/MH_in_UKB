@@ -2,11 +2,11 @@ clear all; close all; clc
 
 addpath('/scratch/janine/MentalHealthInUKB/MatlabScripts/FSLNets')
 addpath('/scratch/janine/MentalHealthInUKB/MatlabScripts/')
-INPUT = 'Subjects_CCAnew.csv';
+INPUT = 'Subjects_effectsize.csv';
 
 % Load data
 S = load(sprintf('%s/%s','/Users/janinebijsterbosch/Box/00_CHPC2_Backups/MentalHealthInUKB_CHPC/SubjectSplits/',INPUT));
-MH = readtable('/Users/janinebijsterbosch/Box/00_CHPC2_Backups/MentalHealthInUKB_CHPC/Data/MH_scan1_40k.tsv','FileType','text');
+MH = readtable('/Users/janinebijsterbosch/Box/00_CHPC2_Backups/MentalHealthInUKB_CHPC/Data/MH_scan1.tsv','FileType','text');
 [~,s,~] = intersect(table2array(MH(:,1)),S); MH = MH(s,:);
 H = get_UKB_headers(MH);
 MH = standardizeMissing(MH,-3); MH = standardizeMissing(MH,-1); MH = standardizeMissing(MH,-818);
@@ -137,7 +137,7 @@ Dsum = Dsum';
 
 %%% Save results
 sprintf('Saving results\n');
-save(sprintf('CCA_inputs_behavior_%s.mat',INPUT(10:end-4)),'Dall','Dsum','Dep_all','D4');
+save(sprintf('CCArepliation_behavior_%s.mat',INPUT(10:end-4)),'Dall','Dsum','Dep_all','D4');
 
 
 

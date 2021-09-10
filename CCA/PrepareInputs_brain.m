@@ -1,88 +1,45 @@
 clear all; close all; clc
 
-addpath('/scratch/janine/MentalHealthInUKB/MatlabScripts/FSLNets')
-addpath('/scratch/janine/MentalHealthInUKB/MatlabScripts/FSL')
-addpath('/scratch/janine/MentalHealthInUKB/MatlabScripts/')
-INPUT = 'Subjects_CCA.csv';
+addpath('/Users/janinebijsterbosch/Box/00_CHPC2_Backups/MentalHealthInUKB_CHPC/FSLNets')
+addpath('/Users/janinebijsterbosch/Box/00_CHPC2_Backups/MentalHealthInUKB_CHPC/FSL')
+addpath('/Users/janinebijsterbosch/Box/00_CHPC2_Backups/MentalHealthInUKB_CHPC/')
+INPUT = 'Subjects_CCAnew.csv';
 
 % Load data
-S = load(sprintf('%s/%s','/scratch/janine/MentalHealthInUKB/SubjectSplits/',INPUT));
-%Maps = {'SCA_amygdala','SCA_pcc','SCA_dlpfc','SCA_insula','dr_stage2'};
-Maps = {};
-%ICsignal = [1  2  3  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22];
-ICsignal = [1 6 7 3]; % DMN, right central executive, lefft central executive, salience (based on visual comparison against Fig 1 in Mulders et al 2015) 
-Checks = zeros(5,3); % REST, SWI, TASK, DWI, STRUCTURAL
-Checks_maps = zeros(5,3); % SCA_amygdala, SCA_pcc, SCA_dlpfc, SCA_insula, dr_stage2 (21x)
-variance_threshold = 0.5; % keep number of PCs that explain at least 50% of variance
+S = load(sprintf('%s/%s','/Users/janinebijsterbosch/Box/00_CHPC2_Backups/MentalHealthInUKB_CHPC/SubjectSplits/',INPUT));
+Checks = zeros(3,3); % REST, TASK, STRUCTURAL
+variance_threshold = 50; % keep number of PCs that explain at least 50% of variance
 NkeepMax = floor(length(S)/10/2);
 
 % Prepare confounds
-load(sprintf('%s/Confounds_Subjects_%s.mat','/scratch/janine/MentalHealthInUKB/Data/',INPUT(10:end-4)));
+load(sprintf('%s/Confounds_Subjects_%s.mat','/Users/janinebijsterbosch/Box/00_CHPC2_Backups/MentalHealthInUKB_CHPC/Data/',INPUT(10:end-4)));
 conf = nets_demean(conf);
 Pconf = pinv(conf);
 
-% Gray matter mask
-%system('module load fsl')
-%system('fast -o Mask/MNIseg $FSLDIR/data/standard/MNI152_T1_2mm_brain.nii.gz');
-%system('fslmaths Mask/MNIseg_pve_1.nii.gz -thr 0 -bin Mask/GrayMatterMask.nii.gz');
-GM = read_avw('Mask/GrayMatterMask.nii.gz'); GM = find(GM==1);
-
-%% Maps
-MAPS_OUT = []; I = 1;
-for m = 1:length(Maps)
-    fprintf('Processing %s maps \n',Maps{m})
-    maps_subs = zeros(length(GM),length(S));
-    for s = 1:length(S)
-        map = read_avw(sprintf('/scratch/janine/MDD_spatial/DRmaps/%s_sub-%d.nii.gz',Maps{m},S(s)));
-        if size(map,4)>1
-            map = map(:,:,:,ICsignal);
-            for i = 1:size(map,4)
-                map1 = squeeze(map(:,:,:,i));
-                %maps_subs((i-1)*length(GM)+1:i*length(GM),s) = map1(GM);
-                maps_subs(:,s,i) = map1(GM);
-                clear map1
-            end
-        else
-            maps_subs(:,s) = map(GM);
-        end
-    end
-    for i = 1:size(maps_subs,3)
-        map1 = squeeze(maps_subs(:,:,i));
-        map1 = nets_demean(map1,2);
-        map1 = nets_demean((map1'-conf*(Pconf*map1'))',2);
-        C = map1' * map1;
-        [V,D] = eig(C); [~,inds] = sort(diag(D), 'descend'); D = D(inds,inds); V = V(:,inds);
-        Vexp = diag(D)/sum(diag(D)); Vexp = cumsum(Vexp); Nkeep = find(Vexp>=variance_threshold,1,'first');
-        if Nkeep > NkeepMax; Nkeep = NkeepMax; end
-        Checks_maps(I,1) = size(GM,1); Checks_maps(I,2) = Nkeep; Checks_maps(I,3) = Vexp(Nkeep); I = I+1;
-        MAPS_OUT = [MAPS_OUT V(:,1:Nkeep)];
-        clear map1 C V D inds Vexp Nkeep
-    end
-end
-clear m map maps_subs s i
-
 %% Resting state IDPs
 fprintf('Processing resting state IDPs\n');
-load('/scratch/janine/MentalHealthInUKB/Data/IDPs.mat');
-[~,s,~] = intersect(subs,S); IDP = IDP(s,:)';
-IDP = nets_demean(IDP,2);
-IDP = nets_demean((IDP'-conf*(Pconf*IDP'))',2);
-C = IDP' * IDP;
-[V,D] = eig(C); [~,inds] = sort(diag(D), 'descend'); D = D(inds,inds); V = V(:,inds);
-Vexp = diag(D)/sum(diag(D)); Vexp = cumsum(Vexp); Nkeep = find(Vexp>=variance_threshold,1,'first');
+IDP = load('/Users/janinebijsterbosch/Box/00_WashU/Data/UKB/IDP/IDPs_rest_40k.txt');
+subs = IDP(:,1); IDP = IDP(:,2:end);
+[~,s,~] = intersect(subs,S); IDP = IDP(s,:);
+IDP = nets_demean(IDP);
+IDP = nets_demean(IDP-conf*(Pconf*IDP));
+[REST_COEFF, SCORE, LATENT, TSQUARED, EXPLAINED, MU] = pca(IDP);
+%SCORE_PROJECT = (IDP*REST_COEFF);
+Vexp = cumsum(EXPLAINED); Nkeep = find(Vexp>=variance_threshold,1,'first');
 if Nkeep > NkeepMax; Nkeep = NkeepMax; end
-REST_OUT = V(:,1:Nkeep);
+REST_OUT = SCORE(:,1:Nkeep);
 Checks(1,1) = size(IDP,2); Checks(1,2) = Nkeep; Checks(1,3) = Vexp(Nkeep);
-clear Nkeep V D Vexp s IDP C inds
+Nkeep_rest = Nkeep;
+clear COEFF LATENT TSQUARED EXPLAINED MU Nkeep
 
 %% Load data
-DATA = readtable('/scratch/janine/MentalHealthInUKB/Data/IDP_scan1.tsv','FileType','text');
+DATA = readtable('/Users/janinebijsterbosch/Box/00_CHPC2_Backups/MentalHealthInUKB_CHPC/Data/IDP_scan1_40k.tsv','FileType','text');
 [~,s,~] = intersect(table2array(DATA(:,1)),S); DATA = DATA(s,:);
 H = get_UKB_headers(DATA); 
-load('/scratch/janine/MentalHealthInUKB/Data/ExtractVariables/vars.mat','IDP_nonrest');
+load('/Users/janinebijsterbosch/Box/00_CHPC2_Backups/MentalHealthInUKB_CHPC/Data/ExtractVariables/vars.mat','IDP_nonrest');
 
-%% "impute" missing  data - actually this avoids any imputation
-fprintf('Processing IDPs\n');
+%% Deconfound non-rest data and impute missing  data 
+fprintf('Processing non resting-state IDPs\n');
 varsd = table2array(DATA);
 n1 = strfind(H,'eid'); n1 = find(~cellfun(@isempty,n1));
 ID = n1; clear n1
@@ -93,33 +50,37 @@ for i = 1:size(varsd,2) % deconfound ignoring missing data
     grotconf = nets_demean(conf(grot,:)); 
     varsd(grot,i) = normalise(varsd(grot,i)-grotconf*(pinv(grotconf)*varsd(grot,i)));
 end
-varsdCOV = zeros(size(varsd,1));
-for i = 1:size(varsd,1) % estimate "pairwise" covariance, ignoring missing data
-    for j = 1:size(varsd,1)
-        grot = varsd([i j],:); 
-        grot = cov(grot(:,sum(isnan(grot))==0)'); 
-        varsdCOV(i,j) = grot(1,2);
-    end
-end
-varsdCOV2 = nearestSPD(varsdCOV); % minor adjustment: project onto the nearest valid covariance matrix
-[V,D] = eig(varsdCOV2); [~,inds] = sort(diag(D), 'descend'); D = D(inds,inds); V = V(:,inds);
-Vexp = diag(D)/sum(diag(D)); Vexp = cumsum(Vexp); Nkeep = find(Vexp>=variance_threshold,1,'first');
-if Nkeep > NkeepMax; Nkeep = NkeepMax; end
-IDP_OUT = V(:,1:Nkeep);
-Checks(2,1) = size(varsd,2); Checks(2,2) = Nkeep; Checks(2,3) = Vexp(Nkeep);
-
 varsd1 = knnimpute(varsd);
-varsd1 = varsd1';
-C = varsd1' * varsd1;
-[V1,D1] = eig(C); [~,inds] = sort(diag(D1), 'descend'); D1 = D1(inds,inds); V1 = V1(:,inds);
-Vexp = diag(D1)/sum(diag(D1)); Vexp = cumsum(Vexp); Nkeep = find(Vexp>=variance_threshold,1,'first');
+
+%% Dimensionality reduction task IDPs
+fprintf('Dimensionality reduction task\n');
+task1 = strncmp('Median BOLD',IDP_nonrest(:,2),11); task1 = find(task1==1);
+task2 = strncmp('Median z-stat',IDP_nonrest(:,2),13); task2 = find(task2==1);
+task3 = strncmp('90th percentile',IDP_nonrest(:,2),15); task3 = find(task3==1);
+task = sort([task1; task2; task3]); clear task1 task2 task3
+varsd1_task = varsd1(:,task);
+[TASK_COEFF, SCORE, LATENT, TSQUARED, EXPLAINED, MU] = pca(varsd1_task);
+Vexp = cumsum(EXPLAINED); Nkeep = find(Vexp>=variance_threshold,1,'first');
 if Nkeep > NkeepMax; Nkeep = NkeepMax; end
-IDP_OUT_NEW = V1(:,1:Nkeep);
-Checks(3,1) = size(varsd,2); Checks(3,2) = Nkeep; Checks(3,3) = Vexp(Nkeep);
-clear Nkeep V D Vexp varsd varsdCOV varsdCOV2 i grot grotconf j
+TASK_OUT = SCORE(:,1:Nkeep);
+Checks(2,1) = size(varsd1_task,2); Checks(2,2) = Nkeep; Checks(2,3) = Vexp(Nkeep);
+Nkeep_task = Nkeep;
+clear COEFF LATENT TSQUARED EXPLAINED MU Nkeep
+
+%% Dimensionality reduction on structural IDPs
+fprintf('Dimensionality reduction structural\n');
+nottask = setdiff(1:size(varsd1,2),task);
+varsd1_nottask = varsd1(:,nottask);
+[STRUCT_COEFF, SCORE, LATENT, TSQUARED, EXPLAINED, MU] = pca(varsd1_nottask);
+Vexp = cumsum(EXPLAINED); Nkeep = find(Vexp>=variance_threshold,1,'first');
+if Nkeep > NkeepMax; Nkeep = NkeepMax; end
+STRUCT_OUT = SCORE(:,1:Nkeep);
+Checks(3,1) = size(varsd1_nottask,2); Checks(3,2) = Nkeep; Checks(3,3) = Vexp(Nkeep);
+Nkeep_struct = Nkeep;
+clear COEFF LATENT TSQUARED EXPLAINED MU Nkeep
 
 %% Save results
 sprintf('Saving results\n');
-save(sprintf('CCA_inputs_brain_%s.mat',INPUT(10:end-4)),'MAPS_OUT','REST_OUT','IDP_OUT','IDP_OUT_NEW','Checks','Checks_maps');
-
+save(sprintf('CCA_inputs_brain_%s.mat',INPUT(10:end-4)),'REST_OUT','TASK_OUT','STRUCT_OUT','Checks');
+save(sprintf('Eigs_%s.mat',INPUT(10:end-4)),'REST_COEFF','Nkeep_rest','TASK_COEFF','Nkeep_task','STRUCT_COEFF','Nkeep_struct');
 
