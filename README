@@ -1,0 +1,7 @@
+Code associated with paper entitled 
+'Mental health in the UK Biobank: a roadmap to self-report measures and neuroimaging correlates' 
+by Rosie Dutt*, Kayla Hannon*, Ty Easley, Joseph Griffis, Wei Zhang, and Janine Bijsterbosch (* joint first authors).
+
+Confound generation is in the folder entitled Data.
+
+Note that the UK Biobank assigns different subject identifyers for different data downloads, so the subject IDs in the csv files in the SubjectSplits folder will not map onto the same subjects in other instances of UKB data.
